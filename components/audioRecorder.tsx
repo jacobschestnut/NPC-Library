@@ -1,23 +1,76 @@
 "use client";
 
+import { NPC } from "@/types/NPC";
 import { useEffect, useRef, useState } from "react";
 
 interface AudioRecorderProps {
   onIsRecordingChange: (isRecording: boolean) => void;
+  currentNPC: NPC;
 }
 
-type Clip = {
-  id: string;
-  name: string;
-  url: string;
-};
-
-export default function AudioRecorder({ onIsRecordingChange }: AudioRecorderProps) {
-  const mediaRecorderRef = useRef<MediaRecorder>(null);
+export default function AudioRecorder({
+  onIsRecordingChange,
+  currentNPC,
+}: AudioRecorderProps) {
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
 
-  const [clip, setClip] = useState<Clip | null>(null);
+  const [clip, setClip] = useState<{
+    id: string;
+    blob?: Blob;
+    url: string;
+  } | null>(null);
+
   const [isRecording, setIsRecording] = useState(false);
+
+  useEffect(() => {
+    const loadExistingAudio = async () => {
+      try {
+        const res = await fetch(`/api/npc/${currentNPC.id}/audio`);
+
+        if (!res.ok) return;
+
+        const data = await res.json().catch(() => null);
+
+        if (!data?.url) return;
+
+        setClip({
+          id: crypto.randomUUID(),
+          url: data.url,
+        });
+      } catch (err) {
+        console.error("Failed to load audio:", err);
+      }
+    };
+
+    loadExistingAudio();
+  }, [currentNPC.id]);
+
+  const handleUpload = async (blob: Blob) => {
+    const res = await fetch("/api/upload-url");
+    const { url, key } = await res.json();
+
+    await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "audio/webm",
+      },
+      body: blob,
+    });
+
+    await fetch("/api/audio/save", {
+      method: "POST",
+      body: JSON.stringify({
+        key,
+        npcId: currentNPC.id,
+      }),
+    });
+
+    const audioRes = await fetch(`/api/npc/${currentNPC.id}/audio`);
+    const { url: signedUrl } = await audioRes.json();
+
+    return signedUrl;
+  };
 
   useEffect(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -28,75 +81,88 @@ export default function AudioRecorder({ onIsRecordingChange }: AudioRecorderProp
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((stream) => {
-        const mediaRecorder = new MediaRecorder(stream)
-        mediaRecorderRef.current = mediaRecorder
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
 
         mediaRecorder.ondataavailable = (e: BlobEvent) => {
-          chunksRef.current.push(e.data)
-        }
+          chunksRef.current.push(e.data);
+        };
 
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType })
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(chunksRef.current, {
+            type: mediaRecorder.mimeType,
+          });
 
           chunksRef.current = [];
 
-          const url = URL.createObjectURL(blob);
+          const signedUrl = await handleUpload(blob);
 
-          const name = prompt("Enter clip name") || "Untitled";
-
-          const newClip: Clip = {
+          setClip({
             id: crypto.randomUUID(),
-            name: name,
-            url: url
-          }
-
-          setClip(newClip);
-        }
+            url: signedUrl,
+          });
+        };
       })
       .catch((err) => {
         console.error("getUserMedia error:", err);
       });
-
   }, []);
 
   const startRecording = () => {
     const recorder = mediaRecorderRef.current;
     if (!recorder) return;
 
+    if (clip && !window.confirm("Replace existing clip?")) {
+      return;
+    }
+
+    setClip(null);
     recorder.start();
     setIsRecording(true);
     onIsRecordingChange(true);
   };
 
   const stopRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) return;
-
-    recorder.stop();
+    mediaRecorderRef.current?.stop();
     setIsRecording(false);
     onIsRecordingChange(false);
   };
 
-  const deleteClip = () => {
-    setClip(null);
-  };
-
   return (
     <div>
-      {(!isRecording && !clip) && <button className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700" onClick={startRecording}>
-        Record
-      </button>}
-      {isRecording && <button className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-red-600 hover:bg-blue-700" onClick={stopRecording}>
-        Stop Recording
-      </button>}
-      {clip && 
-        <div className="">
-          <audio controls src={clip?.url} />
-          <button onClick={() => deleteClip()}>
-            Delete
-          </button>
+      {clip && (
+        <div>
+          <audio
+            className="w-full mt-4 px-2 h-12"
+            controls
+            src={clip.url}
+          />
         </div>
-      }
+      )}
+
+      {!clip && (
+        <p className="h-12 mt-4 w-full rounded-lg px-4 py-2 text-white text-center">
+          No clip found.
+        </p>
+      )}
+
+      {!isRecording && (
+        <button
+          className="h-12 cursor-pointer mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          onClick={startRecording}
+        >
+          Record
+        </button>
+      )}
+
+      {isRecording && (
+        <button
+          className="h-12 cursor-pointer mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-red-600 hover:bg-blue-700"
+          onClick={stopRecording}
+        >
+          Stop Recording
+        </button>
+      )}
     </div>
   );
 }

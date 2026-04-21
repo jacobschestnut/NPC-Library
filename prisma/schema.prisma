@@ -17,4 +17,13 @@ model NPC {
   id        Int     @id @default(autoincrement()) 
   name      String
   desc      String?
+  audio     Audio?
 } 
+
+model Audio {
+  id        String @id
+  key       String
+  status    String @default("processing") // processing | ready | failed
+  npcId     Int @unique
+  npc       NPC    @relation(fields: [npcId], references: [id])
+}

@@ -19,7 +19,7 @@ export default function NPCCard({npc}: NPCCardProps) {
         <p className="text-sm text-slate-600 dark:text-slate-400">
           {npc.desc || "No description available."}
         </p>
-        <AudioRecorder onIsRecordingChange={setIsRecording}/>
+        <AudioRecorder currentNPC={npc} onIsRecordingChange={setIsRecording}/>
       </div>
     </div>
   );
