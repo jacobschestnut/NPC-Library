@@ -17,7 +17,6 @@ export default function AudioRecorder({
 
   const [clip, setClip] = useState<{
     id: string;
-    blob?: Blob;
     url: string;
   } | null>(null);
 

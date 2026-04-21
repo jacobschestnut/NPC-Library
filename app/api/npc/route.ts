@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
-// GET /api/npcs
 export async function GET() {
   const npcs = await prisma.nPC.findMany()
 
