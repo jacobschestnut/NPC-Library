@@ -1,7 +1,7 @@
 "use client";
 
 import { NPC } from "@/types/NPC";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 interface AudioRecorderProps {
   onIsRecordingChange: (isRecording: boolean) => void;
@@ -45,7 +45,7 @@ export default function AudioRecorder({
     loadExistingAudio();
   }, [currentNPC.id]);
 
-  const handleUpload = async (blob: Blob) => {
+  const handleUpload = useCallback(async (blob: Blob) => {
     const res = await fetch("/api/upload-url");
     const { url, key } = await res.json();
 
@@ -69,7 +69,7 @@ export default function AudioRecorder({
     const { url: signedUrl } = await audioRes.json();
 
     return signedUrl;
-  };
+  }, [currentNPC.id]);
 
   useEffect(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -105,7 +105,7 @@ export default function AudioRecorder({
       .catch((err) => {
         console.error("getUserMedia error:", err);
       });
-  }, []);
+  }, [handleUpload]);
 
   const startRecording = () => {
     const recorder = mediaRecorderRef.current;

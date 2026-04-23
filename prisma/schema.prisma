@@ -5,8 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -14,10 +13,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model NPC {
+model NonPlayableCharacter {
   id    Int    @id @default(autoincrement())
   name  String
   desc  String?
+  userId String
   audio Audio?
 }
 
@@ -26,5 +26,5 @@ model Audio {
   key    String
   status String @default("processing")
   npcId  Int @unique
-  npc    NPC @relation(fields: [npcId], references: [id])
+  npc    NonPlayableCharacter @relation(fields: [npcId], references: [id])
 }

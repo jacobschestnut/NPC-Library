@@ -1,21 +1,19 @@
-import { prisma } from "@/lib/prisma"
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 const npcData = [
-  { name: "Jameson Trillion", desc: "Angry Human Paladin" },
-  { name: "Gorgix Plent", desc: "Kind Goblin merchant" },
-  { name: "Trish Garnet", desc: "Lost Elvish druid" },
-]
+  { name: "Jameson Trillion", desc: "Angry Human Paladin", userId: "1" },
+  { name: "Gorgix Plent", desc: "Kind Goblin merchant", userId: "1" },
+  { name: "Trish Garnet", desc: "Lost Elvish druid", userId: "1" },
+];
 
 async function main() {
   for (const n of npcData) {
-    await prisma.nPC.create({ data: n })
+    await prisma.nonPlayableCharacter.create({ data: n });
   }
 }
 
 main()
-  .then(() => prisma.$disconnect())
-  .catch(async (e) => {
-    console.error(e)
-    await prisma.$disconnect()
-    process.exit(1)
-  })
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

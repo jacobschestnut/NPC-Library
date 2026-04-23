@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const npc = await prisma.nPC.findUnique({
+  const npc = await prisma.nonPlayableCharacter.findUnique({
     where: { id: Number(id) },
     include: { audio: true },
   });
